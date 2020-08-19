@@ -238,8 +238,8 @@ def print_handle_in(sel_data, ret_info, flag):
         # print(lot_list)
 
         for pce_id in lot_list:
-            label_content = f'''"PRODUCT_ID","{row['part_no']}";"LOT_ID","{row['lot_id']}";"UNIT_QTY","{row['unit_qty']}{row['unit_name']}";"PO_ID","{row['po_id']}";"PO_SUBID","{row['po_sub_id']}";"START_DATE","{row['start_date']}";"END_DATE","{row['lbl_term']}";"SN","{pce_id}"'''
-
+            label_content = f'''"PRODUCT_ID","{row['part_no']}";"LOT_ID","{row['lot_id']}";"UNIT_QTY1","{row['unit_qty']}{row['unit_name']}";"PO_ID","{row['po_id']}";"PO_SUBID","{row['po_sub_id']}";"START_DATE","{row['start_date']}";"END_DATE","{row['lbl_term'][:10]}";"SN","{pce_id}";"SUPPLIER_NAME","{row['supplier_name']}";"SUPPLIERID","{row['supplier_id']}";"UNIT_QTY2","{row['unit_qty']}"  '''
+            print(label_content)
             print_label_in(label_content, row, pce_id, flag)
 
         time.sleep(2)
@@ -281,22 +281,22 @@ def print_label_in(label_content, row, pce_id, flag):
     sql = f''' insert into erpdata.dbo.tblME_PrintInfo(PrinterNameID,BartenderName,Content,Flag,Createdate,EVENT_SOURCE,EVENT_ID,LABEL_ID,PRINT_QTY)
                values('{printer_name_id}','{bartender_name_id}','{label_content}','0','{row['start_date']}','STORE','MATERIAL','{row['entry_no']}','1')
            '''
-    # print(sql)
-    # conn.MssConn.exec(sql)
+    print(sql)
+    conn.MssConn.exec(sql)
 
     # insert to mes
     sql = f'''insert into ERPBASE..TblERPFLToME(STOCK_TYPE,STOCK_ID,PRD_ID,PRD_VER,QTY,PRD_DATE,EFF_DATE,flag,CreateDate,FStauts)
             values('M','{pce_id}','{row['part_no']}','A','{row['unit_qty']}',getdate(),'{row['lbl_term']}',0,getdate(),0)
         '''
 
-    # print(sql)
+    print(sql)
     # conn.MssConn.exec(sql)
 
     # insert to print history
     sql = f'''insert into TBL_MATERIAL_PRINT_HISTORY(PART_ID,PART_NAME,LOT_ID,PCE_ID,PRINTED_DATE,PRINTED_BY,PRINTED_FLAG,REMARK,REASON)
     values('{row['part_no']}','{row['part_name']}','{row['lot_id']}','{pce_id}',sysdate,'{row['user_name']}','{flag}','{row['entry_no']}','{row['print_reason']}')
     '''
-    # print(sql)
+    print(sql)
     # conn.OracleConn.exec(sql)
 
 
