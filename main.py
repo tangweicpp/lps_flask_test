@@ -143,7 +143,19 @@ def r_print_label():
         return make_response(jsonify(ret_info))
 
 
+# print_label_in
+@app.route('/print_label_in', methods=['GET', 'POST'])
+def r_print_label_in():
+    if request.method == 'POST':
+        sel_data = json.loads(request.get_data(as_text=True))
+        print(sel_data)
+        ret_info = {}
+        hpt.print_handle_in(sel_data, ret_info, flag='1')
+        return make_response(jsonify(ret_info))
+
 # Print lables agagin
+
+
 @app.route('/print_label_again', methods=['GET', 'POST'])
 def r_print_label_again():
     if request.method == 'POST':
@@ -154,6 +166,20 @@ def r_print_label_again():
             row['lbl_printing_qty'] = row['lbl_print_again_qty']
 
         hpt.print_handle(sel_data, ret_info, flag='2')
+        return make_response(jsonify(ret_info))
+
+
+# Print lables agagin
+@app.route('/print_label_in_again', methods=['GET', 'POST'])
+def r_print_label_in_again():
+    if request.method == 'POST':
+        sel_data = json.loads(request.get_data(as_text=True))
+        # print(sel_data)
+        ret_info = {}
+        for row in sel_data:
+            row['lbl_printing_qty'] = row['lbl_print_again_qty']
+
+        hpt.print_handle_in(sel_data, ret_info, flag='2')
         return make_response(jsonify(ret_info))
 
 

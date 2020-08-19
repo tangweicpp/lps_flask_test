@@ -174,6 +174,8 @@ def get_po_list_data(po_query, ret_info):
         result['po_sub_id'] = xstr(row[12])
         result['lbl_print_again_qty'] = '0'
         result['lbl_printing_qty'] = '0'
+        result['start_date'] = '20' + result['lot_id'][:2] + '/' + \
+            result['lot_id'][2:4] + '/' + result['lot_id'][4:6]
         result['print_reason'] = ''
 
         if not result['unit_qty']:
@@ -222,6 +224,31 @@ def print_handle(sel_data, ret_info, flag):
     return True
 
 
+# print_handle_in
+def print_handle_in(sel_data, ret_info, flag):
+    if not sel_data:
+        ret_info['ret_desc'] = "没有数据"
+        ret_info['ret_code'] = 201
+        print("没有数据")
+        return False
+
+    for row in sel_data:
+        print(row)
+        lot_list = get_print_lot(row)
+        # print(lot_list)
+
+        for pce_id in lot_list:
+            label_content = f'''"PRODUCT_ID","{row['part_no']}";"LOT_ID","{row['lot_id']}";"UNIT_QTY","{row['unit_qty']}{row['unit_name']}";"PO_ID","{row['po_id']}";"PO_SUBID","{row['po_sub_id']}";"START_DATE","{row['start_date']}";"END_DATE","{row['lbl_term']}";"SN","{pce_id}"'''
+
+            print_label_in(label_content, row, pce_id, flag)
+
+        time.sleep(2)
+
+    ret_info['ret_desc'] = "标签打印成功"
+    ret_info['ret_code'] = 200
+    return True
+
+
 def print_label(label_content, row, pce_id, flag):
     # insert to print table
     sql = f''' insert into erpdata.dbo.tblME_PrintInfo(PrinterNameID,BartenderName,Content,Flag,Createdate,EVENT_SOURCE,EVENT_ID,LABEL_ID,PRINT_QTY)
@@ -232,7 +259,7 @@ def print_label(label_content, row, pce_id, flag):
 
     # insert to mes
     sql = f'''insert into ERPBASE..TblERPFLToME(STOCK_TYPE,STOCK_ID,PRD_ID,PRD_VER,QTY,PRD_DATE,EFF_DATE,flag,CreateDate,FStauts)
-            values('M','{pce_id}','{row['part_no']}','A','{row['unit_qty']}',getdate(),'{row['lbl_term']}',0,getdate(),0)
+            values('M','{pce_id}','{row['part_no']}','A','{row['unit_qty']}','{row['start_date']}','{row['lbl_term']}',0,getdate(),0)
         '''
 
     # print(sql)
@@ -244,6 +271,33 @@ def print_label(label_content, row, pce_id, flag):
     '''
     # print(sql)
     conn.OracleConn.exec(sql)
+
+
+def print_label_in(label_content, row, pce_id, flag):
+    # insert to print table
+    printer_name_id = '2#6F资讯部办公室'
+    bartender_name_id = 'STOCK_IN.btw'
+
+    sql = f''' insert into erpdata.dbo.tblME_PrintInfo(PrinterNameID,BartenderName,Content,Flag,Createdate,EVENT_SOURCE,EVENT_ID,LABEL_ID,PRINT_QTY)
+               values('{printer_name_id}','{bartender_name_id}','{label_content}','0','{row['start_date']}','STORE','MATERIAL','{row['entry_no']}','1')
+           '''
+    # print(sql)
+    # conn.MssConn.exec(sql)
+
+    # insert to mes
+    sql = f'''insert into ERPBASE..TblERPFLToME(STOCK_TYPE,STOCK_ID,PRD_ID,PRD_VER,QTY,PRD_DATE,EFF_DATE,flag,CreateDate,FStauts)
+            values('M','{pce_id}','{row['part_no']}','A','{row['unit_qty']}',getdate(),'{row['lbl_term']}',0,getdate(),0)
+        '''
+
+    # print(sql)
+    # conn.MssConn.exec(sql)
+
+    # insert to print history
+    sql = f'''insert into TBL_MATERIAL_PRINT_HISTORY(PART_ID,PART_NAME,LOT_ID,PCE_ID,PRINTED_DATE,PRINTED_BY,PRINTED_FLAG,REMARK,REASON)
+    values('{row['part_no']}','{row['part_name']}','{row['lot_id']}','{pce_id}',sysdate,'{row['user_name']}','{flag}','{row['entry_no']}','{row['print_reason']}')
+    '''
+    # print(sql)
+    # conn.OracleConn.exec(sql)
 
 
 def get_print_lot(row):
