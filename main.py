@@ -114,7 +114,7 @@ def r_query_entry_no():
             return make_response(jsonify(ret_info))
 
 
-# Query entry no
+# Query entry data
 @app.route('/query_entry_data', methods=['GET', 'POST'])
 def r_query_entry_data():
     if request.method == 'GET':
@@ -166,6 +166,43 @@ def r_set_unit_qty():
         ret_info = {}
         hpt.set_unit_qty(sel_data, ret_info)
         return make_response(jsonify(ret_info))
+
+
+# In
+# Query entry no
+@app.route('/query_po_no', methods=['GET', 'POST'])
+def r_query_po_no():
+    if request.method == 'GET':
+        po_query = {}
+        ret_info = {}
+        po_query['start_date'] = request.args.get('startDate')
+        po_query['end_date'] = request.args.get('endDate')
+
+        ret_data = hpt.get_po_no(po_query, ret_info)
+        if not ret_data:
+            return make_response(jsonify(ret_info))
+
+        else:
+            ret_info['ret_data'] = ret_data
+            return make_response(jsonify(ret_info))
+
+
+# Query entry data
+@app.route('/query_po_list_data', methods=['GET', 'POST'])
+def r_query_po_list_data():
+    if request.method == 'GET':
+        po_query = {}
+        ret_info = {'ret_part_name': '', 'ret_part_no': ''}
+
+        po_query['entry_number'] = request.args.get('entryNumber')
+
+        ret_data = hpt.get_po_list_data(po_query, ret_info)
+        if not ret_data:
+            return make_response(jsonify(ret_info))
+
+        else:
+            ret_info['ret_data'] = ret_data
+            return make_response(jsonify(ret_info))
 
 
 # Run server
