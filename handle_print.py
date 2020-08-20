@@ -109,11 +109,6 @@ def get_entry_data(po_query, ret_info):
         result['lot_id'] = xstr(row[2])
         result['total_qty'] = xstr(row[3])
         result['unit_qty'] = xstr(row[4])
-        result['lbl_qty'] = xstr(row[5])
-        result['lbl_term'] = xstr(row[6])
-        result['lbl_print_again_qty'] = '0'
-        result['lbl_printing_qty'] = '0'
-        result['print_reason'] = ''
 
         if not result['unit_qty']:
             ret_info['ret_desc'] = f"物料：{result['part_name']}  料号：{result['part_no']} 没有维护单位数量，请先维护好，否则无法打印标签"
@@ -121,6 +116,14 @@ def get_entry_data(po_query, ret_info):
             ret_info['ret_part_name'] = result['part_name']
             ret_info['ret_part_no'] = result['part_no']
             return False
+
+        result['lbl_qty'] = xstr(row[5])
+        result['lbl_term'] = xstr(row[6])
+        result['lbl_print_again_qty'] = '0'
+        result['lbl_printing_qty'] = '0'
+        result['print_reason'] = ''
+        result['start_date'] = '20' + result['lot_id'][:2] + '/' + \
+            result['lot_id'][2:4] + '/' + result['lot_id'][4:6]
 
         sql = f"SELECT count(*) FROM TBL_MATERIAL_PRINT_HISTORY WHERE remark = '{po_query['entry_number']}' AND part_id = '{result['part_no']}' AND lot_id = '{result['lot_id']}' AND printed_flag = '1'"
         result['lbl_printed_qty'] = conn.OracleConn.query(sql)[0][0]
@@ -144,7 +147,7 @@ def get_po_list_data(po_query, ret_info):
         from erpbase..tblToRecEntry t1
   		inner join erpbase..tblToRec t0 on t0.到货单编号 = t1.到货单编号
         inner join AIS20141114094336.dbo.t_ICItem  t2 on t2.FNumber = t1.物料编号
-        inner join ERPBASE.dbo.tblUnitData t4 on t4.结构编码 = t2.FProductUnitID 
+        inner join ERPBASE.dbo.tblUnitData t4 on t4.结构编码 = t2.FProductUnitID
         inner join erpbase.dbo.tblSupplierData t5 on t5.供应商编号 = t0.供应商编号
         left join erpbase.dbo.unitlist t3 on t3.料号 = t2.F_101
         where t1.到货单编号 = '{po_query['entry_number']}' and substring(t2.F_101,1,2) <> '60'
@@ -168,6 +171,15 @@ def get_po_list_data(po_query, ret_info):
         result['total_qty'] = xstr(row[6])
         result['part_model'] = xstr(row[7])
         result['unit_qty'] = xstr(row[8])
+
+        if not result['unit_qty']:
+            ret_info['ret_desc'] = f"物料：{result['part_name']}  料号：{result['part_no']} 没有维护单位数量，请先维护好，否则无法打印标签"
+            ret_info['ret_code'] = 201
+            ret_info['ret_part_name'] = result['part_name']
+            ret_info['ret_part_name_desc'] = result['part_model']
+            ret_info['ret_part_no'] = result['part_no']
+            return False
+
         result['lbl_qty'] = xstr(row[9])
         result['unit_name'] = xstr(row[10])
         result['po_id'] = xstr(row[11])
@@ -177,14 +189,6 @@ def get_po_list_data(po_query, ret_info):
         result['start_date'] = '20' + result['lot_id'][:2] + '/' + \
             result['lot_id'][2:4] + '/' + result['lot_id'][4:6]
         result['print_reason'] = ''
-
-        if not result['unit_qty']:
-            ret_info['ret_desc'] = f"物料：{result['part_name']}  料号：{result['part_no']} 没有维护单位数量，请先维护好，否则无法打印标签"
-            ret_info['ret_code'] = 201
-            ret_info['ret_part_name'] = result['part_name']
-            ret_info['ret_part_name_desc'] = result['part_model']
-            ret_info['ret_part_no'] = result['part_no']
-            return False
 
         sql = f"SELECT count(*) FROM TBL_MATERIAL_PRINT_HISTORY WHERE remark = '{po_query['entry_number']}' AND part_id = '{result['part_no']}' AND lot_id = '{result['lot_id']}' AND printed_flag = '1'"
         result['lbl_printed_qty'] = conn.OracleConn.query(sql)[0][0]
@@ -238,7 +242,8 @@ def print_handle_in(sel_data, ret_info, flag):
         # print(lot_list)
 
         for pce_id in lot_list:
-            label_content = f'''"PRODUCT_ID","{row['part_no']}";"LOT_ID","{row['lot_id']}";"UNIT_QTY1","{row['unit_qty']}{row['unit_name']}";"PO_ID","{row['po_id']}";"PO_SUBID","{row['po_sub_id']}";"START_DATE","{row['start_date']}";"END_DATE","{row['lbl_term'][:10]}";"SN","{pce_id}";"SUPPLIER_NAME","{row['supplier_name']}";"SUPPLIERID","{row['supplier_id']}";"UNIT_QTY2","{row['unit_qty']}"  '''
+            label_content = f'''"PRODUCT_ID","{row['part_no']}";"PRODUCT_NAME","{row['part_name']}";"LOT_ID","{row['lot_id']}";"UNIT_QTY1","{round(float(row['unit_qty']),2)}{row['unit_name']}";"PO_ID","{row['po_id']}";"PO_SUBID","{row['po_sub_id']}";"START_DATE","{row['start_date']}";"END_DATE","{row['lbl_term'][:10]}";"SN","{pce_id}";"SUPPLIER_NAME","{row['supplier_name']}";"SUPPLIER_ID","{row['supplier_id']}";"UNIT_QTY2","{round(float(row['unit_qty']),2)}"'''
+
             print(label_content)
             print_label_in(label_content, row, pce_id, flag)
 
@@ -251,8 +256,13 @@ def print_handle_in(sel_data, ret_info, flag):
 
 def print_label(label_content, row, pce_id, flag):
     # insert to print table
+    if row['user_name'] == '07885':
+        printer_name_id = '2#6F资讯部办公室'
+    else:
+        printer_name_id = 'HT_ST'
+
     sql = f''' insert into erpdata.dbo.tblME_PrintInfo(PrinterNameID,BartenderName,Content,Flag,Createdate,EVENT_SOURCE,EVENT_ID,LABEL_ID,PRINT_QTY)
-               values('HT_ST','MATERIAL.btw','{label_content}','0',GetDate(),'STORE','MATERIAL','{row['entry_no']}','1')
+               values('{printer_name_id}','MATERIAL.btw','{label_content}','0',GetDate(),'STORE','MATERIAL','{row['entry_no']}','1')
            '''
     # print(sql)
     conn.MssConn.exec(sql)
@@ -275,29 +285,34 @@ def print_label(label_content, row, pce_id, flag):
 
 def print_label_in(label_content, row, pce_id, flag):
     # insert to print table
-    printer_name_id = '2#6F资讯部办公室'
+
+    if row['user_name'] == '07885':
+        printer_name_id = '2#6F资讯部办公室'
+    else:
+        printer_name_id = 'HT_ST'
+
     bartender_name_id = 'STOCK_IN.btw'
 
     sql = f''' insert into erpdata.dbo.tblME_PrintInfo(PrinterNameID,BartenderName,Content,Flag,Createdate,EVENT_SOURCE,EVENT_ID,LABEL_ID,PRINT_QTY)
-               values('{printer_name_id}','{bartender_name_id}','{label_content}','0','{row['start_date']}','STORE','MATERIAL','{row['entry_no']}','1')
+               values('{printer_name_id}','{bartender_name_id}','{label_content}','0',GetDate(),'STORE','MATERIAL','{row['entry_no']}','1')
            '''
     print(sql)
     conn.MssConn.exec(sql)
 
     # insert to mes
     sql = f'''insert into ERPBASE..TblERPFLToME(STOCK_TYPE,STOCK_ID,PRD_ID,PRD_VER,QTY,PRD_DATE,EFF_DATE,flag,CreateDate,FStauts)
-            values('M','{pce_id}','{row['part_no']}','A','{row['unit_qty']}',getdate(),'{row['lbl_term']}',0,getdate(),0)
+            values('M','{pce_id}','{row['part_no']}','A','{row['unit_qty']}','{row['start_date']}','{row['lbl_term']}',0,getdate(),0)
         '''
 
     print(sql)
-    # conn.MssConn.exec(sql)
+    conn.MssConn.exec(sql)
 
     # insert to print history
     sql = f'''insert into TBL_MATERIAL_PRINT_HISTORY(PART_ID,PART_NAME,LOT_ID,PCE_ID,PRINTED_DATE,PRINTED_BY,PRINTED_FLAG,REMARK,REASON)
     values('{row['part_no']}','{row['part_name']}','{row['lot_id']}','{pce_id}',sysdate,'{row['user_name']}','{flag}','{row['entry_no']}','{row['print_reason']}')
     '''
     print(sql)
-    # conn.OracleConn.exec(sql)
+    conn.OracleConn.exec(sql)
 
 
 def get_print_lot(row):
